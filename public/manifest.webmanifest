@@ -1,0 +1,21 @@
+{
+  "name": "Case Manager",
+  "short_name": "Case Manager",
+  "description": "Cases, tasks, deadlines and follow-ups. Your data stays on your device.",
+  "id": "./",
+  "start_url": "./#/today",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#13213a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "url": "./#/today" },
+    { "name": "Follow-ups", "url": "./#/followups" },
+    { "name": "Deadline calculator", "url": "./#/calculator" }
+  ]
+}
