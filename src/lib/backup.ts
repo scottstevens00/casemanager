@@ -16,6 +16,12 @@ declare global {
 }
 
 let handle: Handle | undefined
+let hooked = false
+function hookChanges() {
+  if (hooked) return
+  hooked = true
+  store.onChange(scheduleBackup)
+}
 let status: 'none' | 'ok' | 'needs-permission' | 'error' = 'none'
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
@@ -41,7 +47,7 @@ export async function initBackup() {
   const p = await handle.queryPermission?.({ mode: 'readwrite' })
   status = p === 'granted' ? 'ok' : 'needs-permission'
   emit()
-  store.onChange(scheduleBackup)
+  hookChanges()
 }
 
 export async function chooseBackupFile() {
@@ -53,7 +59,7 @@ export async function chooseBackupFile() {
   handle = h
   await store.kvSet('backupHandle', h)
   status = 'ok'
-  store.onChange(scheduleBackup)
+  hookChanges()
   await writeBackup()
 }
 

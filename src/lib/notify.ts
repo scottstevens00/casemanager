@@ -137,6 +137,12 @@ export async function initNativeNotifications() {
     if (url) location.hash = url
   })
   try {
+    const perm = await LocalNotifications.checkPermissions()
+    if (perm.display !== 'granted') await LocalNotifications.requestPermissions()
+  } catch {
+    /* ignore */
+  }
+  try {
     await LocalNotifications.createChannel({ id: 'default', name: 'Reminders', importance: 4, visibility: 1 })
   } catch {
     /* older Android */
