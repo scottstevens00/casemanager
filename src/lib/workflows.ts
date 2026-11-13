@@ -114,6 +114,8 @@ export const WORKFLOWS: Workflow[] = [
       })
       const sameDay = ans?.date
       const sameDayNote = 'Goes out the same day as the answer.'
+      // Our IDS wait for plaintiff's: due at the later of 28 days after our answer or 14 days after plaintiff's are due.
+      const ids = ans ? computed('disclosures_def', ans.date, {}, ctx.rules) : undefined
       out.push({
         key: 'ids',
         include: true,
@@ -123,9 +125,10 @@ export const WORKFLOWS: Workflow[] = [
           title: 'Initial disclosures (IDS)',
           kind: 'deadline',
           category: 'Discovery',
-          due: sameDay,
+          due: ids?.date,
+          rule: ids ? ids.rule + ' Estimated from the answer deadline; logging “Answer filed” recalculates it from the actual filing date.' : undefined,
           wfKey: 'ids',
-          notes: `${sameDayNote} We can serve discovery only after serving our initial disclosures (MCR 2.301(A)(1)). The rule's outer limit is the later of 28 days after the answer or 14 days after plaintiff's disclosures are due (MCR 2.302(A)(5)(b)(ii)).`,
+          notes: "After plaintiff's initial disclosures come in. Due at the later of 28 days after our answer or 14 days after plaintiff's disclosures are due (MCR 2.302(A)(5)(b)(ii)).",
         },
       })
       out.push({
@@ -181,7 +184,7 @@ export const WORKFLOWS: Workflow[] = [
   {
     id: 'answer_filed',
     title: 'Answer filed',
-    blurb: 'Same-day discovery and stipulated QPO, the QPO follow-up, and initial-disclosure dates.',
+    blurb: 'Same-day discovery requests and stipulated QPO, the QPO follow-up, plaintiff’s initial disclosures, and our IDS deadline.',
     fields: [{ key: 'answeredOn', label: 'Date the answer was filed', type: 'date', required: true }],
     build: (v, ctx) => {
       const d = v.answeredOn
@@ -191,21 +194,6 @@ export const WORKFLOWS: Workflow[] = [
       const discResp = computed('disc_response', d, {}, ctx.rules)
       return [
         { key: 'answer_done', include: true, type: 'complete', wfKey: 'answer', task: { title: 'Mark “Answer and affirmative defenses” done' } },
-        {
-          key: 'disclosures',
-          include: true,
-          type: 'task',
-          task: {
-            title: 'Initial disclosures (IDS)',
-            kind: 'deadline',
-            category: 'Discovery',
-            priority: 'high',
-            due: d,
-            wfKey: 'ids',
-            rule: ours.rule,
-            notes: `Goes out with the answer and discovery: we can seek discovery only after serving our initial disclosures (MCR 2.301(A)(1)). Outer limit under the rule: ${fmtLong(ours.date)}.`,
-          },
-        },
         {
           key: 'discovery',
           include: true,
@@ -266,6 +254,21 @@ export const WORKFLOWS: Workflow[] = [
             due: theirs.date,
             nextFollowUp: theirs.date,
             rule: theirs.rule,
+          },
+        },
+        {
+          key: 'disclosures',
+          include: true,
+          type: 'task',
+          task: {
+            title: 'Initial disclosures (IDS)',
+            kind: 'deadline',
+            category: 'Discovery',
+            priority: 'high',
+            due: ours.date,
+            wfKey: 'ids',
+            rule: ours.rule,
+            notes: "After plaintiff's initial disclosures come in. Due at the later of 28 days after our answer or 14 days after plaintiff's disclosures are due (MCR 2.302(A)(5)(b)(ii)).",
           },
         },
         {
