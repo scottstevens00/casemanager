@@ -54,7 +54,7 @@ jobs:
       - run: npm ci
       - name: Build the web app and copy it into Android
         run: npm run build && npx cap sync android
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -77,7 +77,7 @@ jobs:
         run: |
           chmod +x gradlew
           if [ -n "$CM_KEYSTORE_FILE" ]; then
-            ./gradlew --no-daemon assembleRelease
+            ./gradlew --no-daemon --stacktrace assembleRelease
             cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/CaseManager.apk"
           else
             ./gradlew --no-daemon assembleDebug
