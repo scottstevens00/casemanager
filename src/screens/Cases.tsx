@@ -19,9 +19,11 @@ export function Cases() {
     .filter((c) => !q || [c.name, c.caption, c.caseNo, c.claimNo, c.fileNo, c.client, c.judge].some((x) => x?.toLowerCase().includes(q.toLowerCase())))
     .map((c) => {
       const open = tasks.filter((t) => t.caseId === c.id).sort(sortByDue)
-      return { c, open, next: open.find((t) => effectiveDue(t)) }
+      const next = open.find((t) => effectiveDue(t))
+      return { c, open, next, nextDate: next ? effectiveDue(next) : undefined }
     })
-    .sort((a, b) => (effectiveDue(a.next!) || '9999').localeCompare(effectiveDue(b.next!) || '9999') || a.c.name.localeCompare(b.c.name))
+    // Cases with something due soonest first; cases with nothing scheduled go last, by name.
+    .sort((a, b) => (a.nextDate || '9999').localeCompare(b.nextDate || '9999') || a.c.name.localeCompare(b.c.name))
 
   return (
     <div className="page">

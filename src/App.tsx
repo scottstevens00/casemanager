@@ -27,6 +27,7 @@ import { dismissToast, navigate, openDialog, toast, useUI } from './lib/ui'
 import { dayRules } from './lib/actions'
 import { AddMenu, CaseEditor, ConfirmDialog, EventEditor, TimeEditor, WorkflowDialog } from './components/Dialogs'
 import { QuickAdd } from './components/QuickAdd'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { ScannerDialog } from './components/Scanner'
 import { TaskEditor } from './components/TaskEditor'
 import { Calculator } from './screens/Calculator'
@@ -199,7 +200,7 @@ export function App() {
               </div>
             </div>
           )}
-          {page}
+          <ErrorBoundary resetKey={route.join('/')}>{page}</ErrorBoundary>
         </div>
       </div>
 
@@ -229,7 +230,9 @@ export function App() {
 
       {addOpen && <AddMenu onPick={onAdd} onClose={() => setAddOpen(false)} />}
       {ui.dialogs.map((d, i) => (
-        <DialogHost key={i} d={d} />
+        <ErrorBoundary key={i}>
+          <DialogHost d={d} />
+        </ErrorBoundary>
       ))}
       <div className="toasts">
         {ui.toasts.map((t) => (

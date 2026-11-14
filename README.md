@@ -10,7 +10,7 @@ All case data stays on the device it was entered on (Chrome's storage on the PC,
 
 ## What's in it
 - Cases with caption, court, judge, carrier, claim and file numbers, and contacts
-- Assignments with four dates: when you were asked, the deadline you were given, the actual (court) due date, and when you finished — plus on-time tracking. Summary reports get with a 10-business-day goal and a 30-business-day hard deadline
+- Assignments with four dates: when you were asked, the deadline you were given, the actual (court) due date, and when you finished — plus on-time tracking. Summary reports get a 10-business-day goal and a 30-business-day hard deadline
 - Follow-ups on letters and emails, with a nudge every 5 business days until the loop is closed
 - "Log what happened" workflows: new case — my usual tasks for a supervising attorney (SOL memo, answer, IDS, discovery requests, QPO, AOMD, MILs; remembers which ones you do for each attorney), answer filed, deposition or meeting, letter sent, discovery served on us, motion hearing, case evaluation, order entered
 - Michigan deadline calculator (MCR 1.108 counting, MCR 8.110(D)(2) court holidays) with citations
