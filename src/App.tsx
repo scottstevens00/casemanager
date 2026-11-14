@@ -87,7 +87,7 @@ export function App() {
 
   const today = todayISO()
   const open = s.list('tasks').filter((t) => t.status !== 'done')
-  const overdue = open.filter((t) => t.kind !== 'followup' && t.due && t.due < today).length
+  const overdue = open.filter((t) => t.kind !== 'followup' && (effectiveDue(t) || '9999') < today).length
   const dueToday = open.filter((t) => effectiveDue(t) === today).length
   const fuDue = open.filter((t) => t.kind === 'followup' && (effectiveDue(t) || '9999') <= today).length
 

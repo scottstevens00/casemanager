@@ -22,7 +22,7 @@ export function Calendar() {
 
   const itemsOn = (d: ISODate) => ({
     events: events.filter((e) => e.date === d).sort((a, b) => (a.time || '').localeCompare(b.time || '')),
-    tasks: tasks.filter((t) => effectiveDue(t) === d || (t.kind === 'summary' && t.target === d)),
+    tasks: tasks.filter((t) => effectiveDue(t) === d || t.due === d || t.givenDue === d || (t.kind === 'summary' && t.target === d)),
   })
 
   const exportUpcoming = async () => {
@@ -87,7 +87,9 @@ export function Calendar() {
                     ))}
                     {it.tasks.map((t) => (
                       <div key={t.id} className="agenda-item" onClick={() => openDialog({ type: 'task', id: t.id })}>
-                        <span className="time-col">{t.kind === 'followup' ? 'Nudge' : t.kind === 'summary' && t.target === d ? 'Goal' : 'Due'}</span>
+                        <span className="time-col">
+                          {t.kind === 'followup' && t.nextFollowUp === d ? 'Nudge' : t.kind === 'summary' && t.target === d ? 'Goal' : t.givenDue === d ? (t.assignedBy ? `To ${t.assignedBy.split(' ')[0]}` : 'Given') : t.givenDue ? 'Court' : 'Due'}
+                        </span>
                         <div>
                           <span className="t">{t.title}</span>{' '}
                           {t.caseId && <span className="chip case">{s.find('cases', t.caseId)?.name}</span>}{' '}

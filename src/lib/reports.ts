@@ -4,6 +4,7 @@ import { addDays, diffDays, fmtLong, fmtMDY, startOfWeek, todayISO, type ISODate
 import { buildXlsx, type Cell, type Sheet } from './xlsx'
 import { STATUS_LABEL, TASK_KIND_LABEL, type Case, type CaseEvent, type Task, type TimeEntry } from './types'
 import { codeLabel } from './utbms'
+import { effectiveDue, finishedOnTime } from './taskdates'
 
 export interface WeekData {
   start: ISODate
@@ -23,7 +24,6 @@ export function weekOf(d: ISODate): { start: ISODate; end: ISODate; label: strin
   return { start, end, label: `Week of ${fmtMDY(start)} – ${fmtMDY(addDays(start, 4))}` }
 }
 
-const effectiveDue = (t: Task) => (t.kind === 'followup' ? t.nextFollowUp || t.due : t.due)
 
 export function buildWeek(d: ISODate, data: { tasks: Task[]; events: CaseEvent[]; time: TimeEntry[] }): WeekData {
   const { start, end, label } = weekOf(d)
@@ -45,30 +45,42 @@ export function buildWeek(d: ISODate, data: { tasks: Task[]; events: CaseEvent[]
 export function weeklyXlsx(w: WeekData, cases: Case[], userName: string, today: ISODate = todayISO()): Uint8Array {
   const cmap = new Map(cases.map((c) => [c.id, c]))
   const matter = (id?: string) => (id ? cmap.get(id)?.name || '' : 'General')
-  const header: Cell[] = ['Matter', 'Task', 'Type', 'Status', 'Due', 'Assigned by', 'Completed', 'Notes'].map((v) => ({ v, s: 'header' as const }))
+  const COLS = 10
+  const header: Cell[] = ['Matter', 'Task', 'Assigned by', 'Assigned', 'Deadline given', 'Court / actual due', 'Status', 'Completed', 'On time', 'Notes'].map((v) => ({ v, s: 'header' as const }))
   const rows: Sheet['rows'] = [
     [{ v: `Weekly Task Report — ${userName}`, s: 'title' }],
     [{ v: `${w.label}   ·   Prepared ${fmtLong(today)}`, s: 'subtitle' }],
     [],
   ]
   const section = (title: string, list: Task[], done = false) => {
-    rows.push([{ v: `${title} (${list.length})`, s: 'section' }, ...Array(7).fill({ v: '', s: 'section' })])
+    rows.push([{ v: `${title} (${list.length})`, s: 'section' }, ...Array(COLS - 1).fill({ v: '', s: 'section' })])
     rows.push(header)
     if (!list.length) rows.push([{ v: 'None', s: 'muted' }])
     for (const t of list) {
-      const due = effectiveDue(t)
-      const overdue = !done && due && due < today
-      const notes = [t.waitingOn ? `Waiting on ${t.waitingOn}` : '', t.kind === 'summary' && t.target ? `Goal ${fmtMDY(t.target)}` : '', t.notes || '']
+      const isFU = t.kind === 'followup'
+      const given = isFU ? t.nextFollowUp : t.givenDue
+      const court = t.due
+      const late = (d?: string) => !done && !!d && d < today
+      const onTime = finishedOnTime(t)
+      const notes = [
+        t.kind !== 'task' ? TASK_KIND_LABEL[t.kind] : '',
+        t.waitingOn ? `Waiting on ${t.waitingOn}` : '',
+        isFU && t.nextFollowUp ? `Next nudge ${fmtMDY(t.nextFollowUp)}` : '',
+        t.kind === 'summary' && t.target ? `Goal ${fmtMDY(t.target)}` : '',
+        t.notes || '',
+      ]
         .filter(Boolean)
         .join(' · ')
       rows.push([
         { v: matter(t.caseId), s: 'bold' },
         { v: t.title, s: 'wrap' },
-        TASK_KIND_LABEL[t.kind],
-        STATUS_LABEL[t.status],
-        { v: due || '', date: true, s: overdue ? 'overdue' : 'date' },
         t.assignedBy || '',
+        { v: t.assignedOn || '', date: true },
+        { v: isFU ? '' : given || '', date: true, s: late(given) ? 'overdue' : 'date' },
+        { v: court || '', date: true, s: late(court) ? 'overdue' : 'date' },
+        STATUS_LABEL[t.status],
         { v: t.completedOn || '', date: true },
+        onTime === undefined ? '' : onTime ? 'Yes' : { v: 'Late', s: 'overdue' },
         { v: notes, s: 'wrap' },
       ])
     }
@@ -78,23 +90,23 @@ export function weeklyXlsx(w: WeekData, cases: Case[], userName: string, today: 
   section('Open and in progress', w.open)
   section('Waiting on others', w.waiting)
 
-  rows.push([{ v: `Depositions, hearings and meetings this week (${w.events.length})`, s: 'section' }, ...Array(7).fill({ v: '', s: 'section' })])
+  rows.push([{ v: `Depositions, hearings and meetings this week (${w.events.length})`, s: 'section' }, ...Array(COLS - 1).fill({ v: '', s: 'section' })])
   rows.push(['Matter', 'Event', 'Date', 'Time', 'Location'].map((v) => ({ v, s: 'header' as const })))
   if (!w.events.length) rows.push([{ v: 'None', s: 'muted' }])
   for (const e of w.events) rows.push([{ v: matter(e.caseId), s: 'bold' }, { v: e.title, s: 'wrap' }, { v: e.date, date: true }, e.time || '', e.location || ''])
   rows.push([])
   if (w.totalHours > 0) {
-    rows.push([{ v: `Time logged this week: ${w.totalHours.toFixed(1)} hours`, s: 'section' }, ...Array(7).fill({ v: '', s: 'section' })])
+    rows.push([{ v: `Time logged this week: ${w.totalHours.toFixed(1)} hours`, s: 'section' }, ...Array(COLS - 1).fill({ v: '', s: 'section' })])
     rows.push([{ v: 'Matter', s: 'header' }, { v: 'Hours', s: 'header' }])
     for (const r of w.timeByCase) rows.push([{ v: matter(r.caseId), s: 'bold' }, { v: r.hours, s: 'hours' }])
   }
   return buildXlsx([
     {
       name: 'Weekly Report',
-      widths: [16, 46, 11, 15, 11, 15, 11, 40],
+      widths: [15, 44, 14, 11, 13, 13, 15, 11, 8, 38],
       rows,
       freezeRows: 0,
-      merges: ['A1:H1', 'A2:H2'],
+      merges: ['A1:J1', 'A2:J2'],
       footer: `Weekly Task Report – ${w.label}`,
     },
   ])
@@ -108,8 +120,12 @@ export function weeklyEmailText(w: WeekData, cases: Case[], userName: string, to
     L.push(`${title}:`)
     if (!list.length) L.push('  • None')
     for (const t of list) {
-      const due = effectiveDue(t)
-      const tail = done ? '' : due ? ` (due ${fmtMDY(due)}${due < today ? ', overdue' : ''})` : ''
+      const parts: string[] = []
+      if (!done) {
+        if (t.givenDue && t.kind !== 'followup') parts.push(`due${t.assignedBy ? ' to ' + t.assignedBy : ''} ${fmtMDY(t.givenDue)}${t.givenDue < today ? ', overdue' : ''}`)
+        if (t.due) parts.push(`${t.givenDue ? 'court date' : 'due'} ${fmtMDY(t.due)}${!t.givenDue && t.due < today ? ', overdue' : ''}`)
+      } else if (t.assignedBy) parts.push(`for ${t.assignedBy}`)
+      const tail = parts.length ? ` (${parts.join('; ')})` : ''
       L.push(`  • ${m(t.caseId)} — ${t.title}${t.waitingOn && !done ? ` [waiting on ${t.waitingOn}]` : ''}${tail}`)
     }
     L.push('')

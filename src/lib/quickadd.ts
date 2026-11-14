@@ -6,7 +6,10 @@ import type { Case, Priority } from './types'
 export interface QuickParse {
   title: string
   caseId?: string
+  /** The date typed: the deadline you were given when someone assigned it, otherwise your due date. */
   due?: ISODate
+  /** "court 12/1" — the actual court/rule due date. */
+  courtDue?: ISODate
   assignedBy?: string
   priority: Priority
   category?: string
@@ -74,6 +77,17 @@ export function parseQuickAdd(input: string, cases: Case[], today: ISODate = tod
     }
   }
 
+  // Court date: "court 12/1", "court due Mon"
+  let courtDue: ISODate | undefined
+  const court = s.match(/\s(?:court(?:\s+(?:due|date|deadline))?)\s+(?:is\s+)?(?:on\s+)?(\S+)\s/i)
+  if (court) {
+    const d = parseDateWord(court[1], today)
+    if (d) {
+      courtDue = d
+      s = s.replace(court[0], ' ')
+    }
+  }
+
   // Due date: "by Fri", "due 11/20", "on Monday", "in 3 days", "next week", or a trailing date word
   let due: ISODate | undefined
   const inN = s.match(/\s(?:due\s+|by\s+)?in\s+(\d+)\s+(day|days|week|weeks)\s/i)
@@ -133,7 +147,7 @@ export function parseQuickAdd(input: string, cases: Case[], today: ISODate = tod
   }
 
   const category = guessCategory(title)
-  return { title, caseId, due, assignedBy, priority, category, followUp, waitingOn }
+  return { title, caseId, due, courtDue, assignedBy, priority, category, followUp, waitingOn }
 }
 
 export function guessCategory(t: string): string | undefined {

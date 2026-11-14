@@ -1,5 +1,5 @@
 import { Check as CheckIcon, Clock, Mail, MessageSquareReply, Repeat } from 'lucide-react'
-import { completeTask, dayRules, dueState, effectiveDue, markFollowedUp, reopenTask, snooze } from '../lib/actions'
+import { completeTask, dayRules, dueState, effectiveDue, finishedOnTime, markFollowedUp, reopenTask, snooze } from '../lib/actions'
 import { businessDaysBetween, diffDays, fmtShort, relDay, todayISO, type ISODate } from '../lib/dates'
 import { store } from '../lib/store'
 import { TASK_KIND_LABEL, type Task } from '../lib/types'
@@ -12,7 +12,7 @@ export function DueChip({ date, label, done }: { date?: ISODate; label?: string;
   const text = st === 'overdue' ? `Overdue · ${fmtShort(date)}` : st === 'today' ? 'Today' : st === 'soon' || st === 'week' ? `${cap(relDay(date))} · ${fmtShort(date)}` : fmtShort(date)
   return (
     <span className={`chip ${cls}`} title={date}>
-      {label ? label + ' ' : ''}
+      {label ? label + ' · ' : ''}
       {text}
     </span>
   )
@@ -85,7 +85,8 @@ export function TaskRow({ t, showCase = true, compact }: { t: Task; showCase?: b
           {!isFU && t.kind === 'summary' && t.target && !done && (
             <span className={`chip ${todayISO() > t.target ? 'amber' : 'ghost'}`}>Goal {fmtShort(t.target)}</span>
           )}
-          {!isFU && <DueChip date={t.due} done={done} label={t.kind === 'summary' ? 'Due' : undefined} />}
+          {!isFU && t.givenDue && <DueChip date={t.givenDue} done={done} label={t.assignedBy ? `To ${t.assignedBy.split(' ')[0]}` : 'Given'} />}
+          {!isFU && <DueChip date={t.due} done={done} label={t.givenDue ? 'Court' : t.kind === 'summary' ? 'Due' : undefined} />}
           {isFU && t.due && t.due !== t.nextFollowUp && <DueChip date={t.due} label="Due" done={done} />}
           {!compact && t.kind === 'summary' && !done && <SummaryProgress t={t} />}
           {isFU && t.waitingOn && (
@@ -95,9 +96,16 @@ export function TaskRow({ t, showCase = true, compact }: { t: Task; showCase?: b
               {t.followUps?.length ? ` · nudged ${t.followUps.length}×` : ''}
             </span>
           )}
-          {t.assignedBy && !compact && <span>from {t.assignedBy}</span>}
+          {t.assignedBy && !compact && (
+            <span>
+              from {t.assignedBy}
+              {t.assignedOn ? ` · assigned ${fmtShort(t.assignedOn)}` : ''}
+            </span>
+          )}
           {!compact && t.status === 'in_progress' && <span className="chip blue">In progress</span>}
           {done && t.completedOn && <span>done {fmtShort(t.completedOn)}</span>}
+          {done && finishedOnTime(t) === true && <span className="chip green">On time</span>}
+          {done && finishedOnTime(t) === false && <span className="chip red">Late</span>}
           {!due && !done && !isFU && t.kind === 'task' && !compact && <span className="faint">no due date</span>}
           {due && !done && diffDays(due, todayISO()) < -30 && <span className="faint">({-diffDays(due, todayISO())} days)</span>}
         </div>

@@ -119,7 +119,7 @@ export const RULES: DeadlineRule[] = [
     title: "Our initial disclosures (answering party)",
     trigger: 'Date our answer was filed',
     cite: 'MCR 2.302(A)(5)(b)(ii)',
-    note: "Due at the later of 28 days after the answer or 14 days after plaintiff's disclosures are due. A party may seek discovery only after serving its own initial disclosures (MCR 2.301(A)(1)).",
+    note: "Due at the later of 28 days after the answer or 14 days after plaintiff's disclosures are due.",
     compute: (t, _o, r) => {
       const a = computeForward(t, 28, 'days', r)
       const b = computeForward(computeForward(t, 14, 'days', r).date, 14, 'days', r)

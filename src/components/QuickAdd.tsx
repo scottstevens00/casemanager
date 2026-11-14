@@ -17,10 +17,12 @@ export function QuickAdd({ caseId }: { caseId?: string }) {
 
   const draft = () => {
     if (!parsed) return undefined
+    // A date typed for someone else's assignment is the deadline they gave you; "court …" is the actual due date.
     const base = {
       title: parsed.title,
       caseId: cid,
-      due: parsed.due,
+      givenDue: parsed.assignedBy ? parsed.due : undefined,
+      due: parsed.assignedBy ? parsed.courtDue : parsed.courtDue || parsed.due,
       assignedBy: parsed.assignedBy,
       assignedOn: todayISO(),
       priority: parsed.priority,
@@ -36,7 +38,8 @@ export function QuickAdd({ caseId }: { caseId?: string }) {
         waitingOn: parsed.waitingOn,
         sentOn: todayISO(),
         nextFollowUp: parsed.due || addBusinessDays(todayISO(), s.settings.followUpBusinessDays, dayRules()),
-        due: undefined,
+        due: parsed.courtDue,
+        givenDue: undefined,
         category: 'Correspondence',
       }
     return base
@@ -48,7 +51,8 @@ export function QuickAdd({ caseId }: { caseId?: string }) {
     const t = store.save('tasks', d as never)
     store.rememberPerson(d.assignedBy)
     setText('')
-    toast(`Added${c ? ' to ' + c.name : ''}${d.due ? ' · due ' + fmtShort(d.due) : ''}`, 'ok', { label: 'Open', run: () => openDialog({ type: 'task', id: t.id }) })
+    const when = d.givenDue || d.due
+    toast(`Added${c ? ' to ' + c.name : ''}${when ? ' · due ' + fmtShort(when) : ''}`, 'ok', { label: 'Open', run: () => openDialog({ type: 'task', id: t.id }) })
   }
 
   return (
@@ -95,14 +99,21 @@ export function QuickAdd({ caseId }: { caseId?: string }) {
           </div>
           <div className="qa-preview">
             {c ? <span className="chip case">{c.name}</span> : <span className="chip ghost">No case — start with “Name:”</span>}
-            {parsed.due ? <span className="chip gold">Due {fmtShort(parsed.due)}</span> : <span className="chip ghost">No date — add “by Fri” or “11/20”</span>}
+            {parsed.due ? (
+              <span className="chip gold">
+                {parsed.assignedBy && !parsed.followUp ? `Due to ${parsed.assignedBy}` : parsed.followUp ? 'Nudge' : 'Due'} {fmtShort(parsed.due)}
+              </span>
+            ) : (
+              <span className="chip ghost">No date — add “by Fri” or “11/20”</span>
+            )}
+            {parsed.courtDue && <span className="chip red">Court {fmtShort(parsed.courtDue)}</span>}
             {parsed.assignedBy && <span className="chip">From {parsed.assignedBy}</span>}
             {parsed.waitingOn && <span className="chip purple">Waiting on {parsed.waitingOn}</span>}
             {parsed.priority === 'high' && <span className="chip red">High priority</span>}
             {parsed.category && <span className="chip ghost">{parsed.category}</span>}
           </div>
           <div className="tiny muted" style={{ marginTop: 6 }}>
-            Enter to add · Shift+Enter to add details · “!” for high priority · “waiting on X re …” for a follow-up
+            Enter to add · Shift+Enter for details · “for Heidi by Fri” = who and the deadline she gave · “court 12/1” = court date · “!” = high priority
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { addDays, type ISODate } from './dates'
 import type { Case, CaseEvent, Task } from './types'
+import { effectiveDue } from './taskdates'
 
 function esc(s: string) {
   return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
@@ -103,11 +104,14 @@ export function buildIcs(items: IcsItem[], calName = 'Case Manager'): string {
 const caseTag = (c?: Case) => (c ? `[${c.name}] ` : '')
 
 export function taskToIcs(t: Task, c?: Case): IcsItem | undefined {
-  const date = t.kind === 'followup' ? t.nextFollowUp || t.due : t.due
+  const date = effectiveDue(t)
   if (!date) return undefined
-  const prefix = t.kind === 'followup' ? 'Follow up: ' : t.kind === 'summary' ? 'Summary due: ' : 'Due: '
+  const prefix = t.kind === 'followup' ? 'Follow up: ' : t.kind === 'summary' ? 'Summary due: ' : t.givenDue && date === t.givenDue ? `Due${t.assignedBy ? ' to ' + t.assignedBy : ''}: ` : 'Due: '
   const desc = [
     c?.caption,
+    t.assignedBy ? `Assigned by ${t.assignedBy}${t.assignedOn ? ' on ' + t.assignedOn : ''}` : '',
+    t.givenDue ? `Deadline given: ${t.givenDue}` : '',
+    t.due && t.kind !== 'followup' ? `Court / actual due date: ${t.due}` : '',
     t.kind === 'summary' && t.target ? `Goal date: ${t.target}` : '',
     t.waitingOn ? `Waiting on: ${t.waitingOn}` : '',
     t.notes,

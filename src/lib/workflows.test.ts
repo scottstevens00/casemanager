@@ -17,7 +17,8 @@ describe('new case checklist', () => {
     expect(by('qpo').due).toBe('2026-12-01')
     expect(by('amd').due).toBe('2027-02-01') // 91 days after 11/2 = Sun 1/31 -> Mon 2/1
     expect(by('mil').due).toBeUndefined()
-    expect(by('sol_memo').due).toBe('2026-11-20')
+    expect(by('sol_memo').givenDue).toBe('2026-11-20')
+    expect(by('sol_memo').due).toBeUndefined()
     expect(by('answer').wfKey).toBe('answer')
   })
   it('works before service is known', () => {

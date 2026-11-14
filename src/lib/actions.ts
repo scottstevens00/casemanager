@@ -1,6 +1,7 @@
 // Common actions on tasks, follow-ups and events.
 
 import { addBusinessDays, addDays, diffDays, todayISO, type DayRules, type ISODate } from './dates'
+import { effectiveDue } from './taskdates'
 import { store } from './store'
 import type { CaseEvent, Task } from './types'
 import { toast } from './ui'
@@ -8,11 +9,7 @@ import { summaryDatesFor } from './workflows'
 
 export const dayRules = (): DayRules => ({ extraClosed: store.settings.extraClosed })
 
-/** The date that matters for sorting and reminders. */
-export function effectiveDue(t: Task): ISODate | undefined {
-  if (t.kind === 'followup') return t.nextFollowUp || t.due
-  return t.due
-}
+export { effectiveDue, finishedOnTime } from './taskdates'
 
 export type DueState = 'overdue' | 'today' | 'soon' | 'week' | 'later' | 'none'
 

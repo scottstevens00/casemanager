@@ -60,8 +60,10 @@ export interface Task extends Base {
   category?: string
   status: TaskStatus
   priority: Priority
-  /** Hard deadline. */
+  /** Actual due date (court or rule deadline). */
   due?: ISODate
+  /** Deadline the assigning attorney gave you (often earlier than the court date). */
+  givenDue?: ISODate
   /** Soft target date (e.g. summary goal of 10 business days). */
   target?: ISODate
   dueTime?: string
@@ -144,6 +146,8 @@ export interface Settings {
   aiEnabled: boolean
   theme: 'system' | 'light' | 'dark'
   weekStartsMonday: boolean
+  /** Which checklist items you usually do for each supervising attorney. */
+  usualTasks?: Record<string, string[]>
 }
 
 export const DEFAULT_CATEGORIES = [

@@ -33,6 +33,8 @@ export interface WorkflowContext {
   settings: Settings
   rules: DayRules
   caseType?: string
+  /** The case's supervising attorney, if set. */
+  partner?: string
 }
 
 export interface Workflow {
@@ -55,11 +57,11 @@ const isMedMal = (t?: string) => !!t && /med|malpractice|nh\b/i.test(t)
 export const WORKFLOWS: Workflow[] = [
   {
     id: 'new_case',
-    title: 'New case assigned',
-    blurb: 'Your second-chair checklist: SOL memo, answer, IDS, discovery requests, QPO, AOMD and MILs, with the deadlines worked out.',
+    title: 'New case — my usual tasks',
+    blurb: 'A supervising attorney picked up a new case and you’re jumping in: SOL memo, answer, IDS, discovery requests, QPO, AOMD and MILs, with the dates worked out. Uncheck what this attorney doesn’t need from you.',
     fields: [
-      { key: 'assignedOn', label: 'Date assigned to you', type: 'date', required: true },
-      { key: 'assignedBy', label: 'Assigned by', type: 'person', placeholder: 'e.g. the first chair' },
+      { key: 'assignedBy', label: 'Supervising attorney', type: 'person', required: true, placeholder: 'Who you’re doing these for' },
+      { key: 'assignedOn', label: 'Date you were asked', type: 'date', required: true },
       { key: 'servedOn', label: 'Date the complaint was served on our client', type: 'date', help: 'Leave blank if you don’t know yet — the answer task will be added without a date.' },
       {
         key: 'method',
@@ -81,12 +83,12 @@ export const WORKFLOWS: Workflow[] = [
       },
       { key: 'trial', label: 'Trial date, if already set', type: 'date', help: 'Usually not known yet. Scanning the scheduling order later fills in the MIL date.' },
     ],
-    defaults: (ctx) => ({ method: 'personal', medmal: isMedMal(ctx.caseType) ? '1' : '', assignedOn: todayISO() }),
+    defaults: (ctx) => ({ method: 'personal', medmal: isMedMal(ctx.caseType) ? '1' : '', assignedOn: todayISO(), assignedBy: ctx.partner || '' }),
     build: (v, ctx) => {
       const out: Draft[] = []
       const who = v.assignedBy || undefined
       const ans = v.servedOn ? computed('answer', v.servedOn, { method: v.method }, ctx.rules) : undefined
-      // SOL memo: 5 business days after assignment, but before the answer is due.
+      // SOL memo: 5 business days after you're asked, but before the answer is due.
       let solDue = addBusinessDays(v.assignedOn, 5, ctx.rules)
       if (ans && solDue > ans.date) solDue = addBusinessDays(ans.date, -2, ctx.rules)
       if (solDue < v.assignedOn) solDue = v.assignedOn
@@ -95,7 +97,7 @@ export const WORKFLOWS: Workflow[] = [
         key: 'sol_memo',
         include: true,
         type: 'task',
-        task: { ...base, title: 'SOL memo', kind: 'task', category: 'Research/Memo', due: solDue, wfKey: 'sol_memo', notes: 'Default: 5 business days after assignment and before the answer is due. Change it to fit the case.' },
+        task: { ...base, title: 'SOL memo', kind: 'task', category: 'Research/Memo', givenDue: solDue, wfKey: 'sol_memo', notes: 'Default: 5 business days after you were asked, and before the answer is due. Change it to fit the case.' },
       })
       out.push({
         key: 'answer',

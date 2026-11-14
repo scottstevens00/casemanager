@@ -163,6 +163,13 @@ export function TaskEditor({ id, draft }: { id?: string; draft?: Partial<Task> }
             </select>
           </Field>
 
+          <Field label="Assigned by">
+            <PersonInput value={t.assignedBy || ''} onChange={(v) => set({ assignedBy: v })} people={s.settings.people} placeholder="Who gave you this?" />
+          </Field>
+          <Field label="Assigned on">
+            <input className="input" type="date" value={t.assignedOn || ''} onChange={(e) => set({ assignedOn: e.target.value || undefined })} />
+          </Field>
+
           {isFU ? (
             <>
               <Field label="Waiting on">
@@ -189,34 +196,34 @@ export function TaskEditor({ id, draft }: { id?: string; draft?: Partial<Task> }
             </>
           ) : (
             <>
-              <Field label={t.kind === 'summary' ? 'Hard deadline' : 'Due date'}>
+              <Field label={t.kind === 'summary' ? 'Goal date' : 'Deadline you were given'} help={t.kind === 'summary' ? undefined : 'What the attorney asked for'}>
+                {t.kind === 'summary' ? (
+                  <input className="input" type="date" value={t.target || ''} onChange={(e) => set({ target: e.target.value || undefined })} />
+                ) : (
+                  <input className="input" type="date" value={t.givenDue || ''} onChange={(e) => set({ givenDue: e.target.value || undefined })} />
+                )}
+              </Field>
+              <Field label={t.kind === 'summary' ? 'Hard deadline' : 'Actual due date (court)'} help={t.kind === 'summary' ? undefined : 'Court or rule deadline, if there is one'}>
                 <div className="row">
                   <input className="input" type="date" value={t.due || ''} onChange={(e) => set({ due: e.target.value || undefined })} />
                   <input className="input" type="time" style={{ width: 120 }} value={t.dueTime || ''} onChange={(e) => set({ dueTime: e.target.value || undefined })} />
                 </div>
               </Field>
-              {t.kind === 'summary' ? (
-                <Field label="Goal date">
-                  <input className="input" type="date" value={t.target || ''} onChange={(e) => set({ target: e.target.value || undefined })} />
-                </Field>
-              ) : (
-                <Field label="Category">
-                  <select className="select" value={t.category || ''} onChange={(e) => set({ category: e.target.value || undefined })}>
-                    <option value="">—</option>
-                    {s.settings.categories.map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                </Field>
-              )}
+              <Field label="Category">
+                <select className="select" value={t.category || ''} onChange={(e) => set({ category: e.target.value || undefined })}>
+                  <option value="">—</option>
+                  {s.settings.categories.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </Field>
             </>
           )}
-          <Field label="Assigned by">
-            <PersonInput value={t.assignedBy || ''} onChange={(v) => set({ assignedBy: v })} people={s.settings.people} placeholder="Who gave you this?" />
-          </Field>
-          <Field label="Assigned on">
-            <input className="input" type="date" value={t.assignedOn || ''} onChange={(e) => set({ assignedOn: e.target.value || undefined })} />
-          </Field>
+          {t.status === 'done' && (
+            <Field label="Completed on">
+              <input className="input" type="date" value={t.completedOn || ''} onChange={(e) => set({ completedOn: e.target.value || undefined })} />
+            </Field>
+          )}
         </div>
 
         {isFU && (t.followUps?.length || existing) ? (

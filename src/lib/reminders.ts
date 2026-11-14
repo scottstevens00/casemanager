@@ -55,14 +55,30 @@ export function computeReminders(
       if (t.due && t.due !== t.nextFollowUp) {
         push({ key: `t:${t.id}:due:${t.due}:0`, at: localTime(t.due, morning), title: `Due today: ${cl}${t.title}`, body: t.waitingOn ? `Waiting on ${t.waitingOn}.` : '', taskId: t.id, caseId: t.caseId })
       }
-    } else if (t.due) {
-      for (const d of settings.deadlineReminderDays) {
-        const day = addDays(t.due, -d)
+    } else if (t.due || t.givenDue) {
+      if (t.givenDue && t.givenDue !== t.due) {
+        const to = t.assignedBy ? ` to ${t.assignedBy}` : ''
+        for (const d of settings.deadlineReminderDays) {
+          const day = addDays(t.givenDue, -d)
+          push({
+            key: `t:${t.id}:given:${t.givenDue}:${d}`,
+            at: localTime(day, morning),
+            title: d === 0 ? `Due${to} today: ${cl}${t.title}` : d === 1 ? `Due${to} tomorrow: ${cl}${t.title}` : `Due${to} in ${d} days: ${cl}${t.title}`,
+            body: `Deadline you were given: ${fmtLong(t.givenDue)}.${t.due ? ` Court date ${fmtLong(t.due)}.` : ''}`,
+            taskId: t.id,
+            caseId: t.caseId,
+          })
+        }
+      }
+      if (t.due) for (const d of settings.deadlineReminderDays) {
+        const day = addDays(t.due!, -d)
         push({
           key: `t:${t.id}:due:${t.due}:${d}`,
           at: localTime(day, morning),
-          title: d === 0 ? `Due today: ${cl}${t.title}` : d === 1 ? `Due tomorrow: ${cl}${t.title}` : `Due in ${d} days: ${cl}${t.title}`,
-          body: `Deadline ${fmtLong(t.due)}${t.dueTime ? ' at ' + fmtTime(t.dueTime) : ''}.`,
+          title: t.givenDue
+            ? d === 0 ? `Court date today: ${cl}${t.title}` : d === 1 ? `Court date tomorrow: ${cl}${t.title}` : `Court date in ${d} days: ${cl}${t.title}`
+            : d === 0 ? `Due today: ${cl}${t.title}` : d === 1 ? `Due tomorrow: ${cl}${t.title}` : `Due in ${d} days: ${cl}${t.title}`,
+          body: `${t.givenDue ? 'Court date' : 'Deadline'} ${fmtLong(t.due!)}${t.dueTime ? ' at ' + fmtTime(t.dueTime) : ''}.`,
           taskId: t.id,
           caseId: t.caseId,
         })

@@ -25,9 +25,8 @@ export function CaseEditor({ id }: { id?: string }) {
     closeDialog()
     if (!existing) {
       navigate(`case/${saved.id}`)
-      openDialog({ type: 'workflow', caseId: saved.id, workflowId: 'new_case' })
-    }
-    toast(existing ? 'Case saved' : 'Case added')
+      toast('Case added', 'ok', { label: 'Add my usual tasks', run: () => openDialog({ type: 'workflow', caseId: saved.id, workflowId: 'new_case' }) })
+    } else toast('Case saved')
   }
   const del = () =>
     confirmAction(
@@ -401,12 +400,14 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
   const [wfId, setWfId] = useState(workflowId || '')
   const wf = workflowById(wfId)
   const c = s.find('cases', caseId)
-  const ctx = useMemo(() => ({ settings: s.settings, rules: dayRules(), caseType: c?.caseType }), [s.settings, c?.caseType])
+  const ctx = useMemo(() => ({ settings: s.settings, rules: dayRules(), caseType: c?.caseType, partner: c?.partner }), [s.settings, c?.caseType, c?.partner])
   const [values, setValues] = useState<Record<string, string>>(() => {
     const w = workflowById(workflowId || '')
-    return w?.defaults?.({ settings: store.settings, rules: dayRules(), caseType: store.find('cases', initialCase)?.caseType }) || {}
+    const cs = store.find('cases', initialCase)
+    return w?.defaults?.({ settings: store.settings, rules: dayRules(), caseType: cs?.caseType, partner: cs?.partner }) || {}
   })
   const [drafts, setDrafts] = useState<Draft[] | null>(null)
+  const [usualFor, setUsualFor] = useState('')
 
   const pick = (id: string) => {
     const w = workflowById(id)!
@@ -431,7 +432,10 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
       const ex = d.type === 'task' && d.task?.wfKey ? existing.find((t) => t.wfKey === d.task!.wfKey) : undefined
       mapped.push(ex ? { ...d, updateId: ex.id } : d)
     }
-    setDrafts(mapped)
+    // Pre-check what you did for this attorney last time.
+    const usual = wf.id === 'new_case' && values.assignedBy ? s.settings.usualTasks?.[values.assignedBy.trim().toLowerCase()] : undefined
+    setUsualFor(usual ? values.assignedBy.trim() : '')
+    setDrafts(usual ? mapped.map((d) => ({ ...d, include: usual.includes(d.key) })) : mapped)
   }
 
   const commit = () => {
@@ -466,6 +470,10 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
     }
     if (values.to) s.rememberPerson(values.to)
     if (values.assignedBy) s.rememberPerson(values.assignedBy)
+    if (wf.id === 'new_case' && values.assignedBy?.trim()) {
+      const key = values.assignedBy.trim().toLowerCase()
+      s.updateSettings({ usualTasks: { ...(s.settings.usualTasks || {}), [key]: drafts.filter((d) => d.include).map((d) => d.key) } })
+    }
     closeDialog()
     toast(`Added ${n} item${n === 1 ? '' : 's'}${c ? ' to ' + c.name : ''}`)
   }
@@ -566,8 +574,13 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
       {wf && drafts && (
         <>
           <p className="muted" style={{ marginTop: 0 }}>
-            Uncheck anything you don't want. Dates can be changed later on each task.
+            Uncheck anything you don't want. Set the deadline you were given next to each court date, or add it later on the task.
           </p>
+          {usualFor && (
+            <div className="banner blue" style={{ marginBottom: 8 }}>
+              Checked to match what you did for {usualFor} last time.
+            </div>
+          )}
           {!drafts.length && <p>Nothing to add for these choices.</p>}
           {drafts.map((d, i) => {
             if (d.type === 'complete')
@@ -586,6 +599,7 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
               )
             const title = d.type === 'event' ? d.event!.title : d.task!.title
             const date = d.type === 'event' ? d.event!.date : d.task!.kind === 'followup' ? d.task!.nextFollowUp || d.task!.due : d.task!.due
+            const shown = date || (d.type === 'task' ? d.task!.givenDue : undefined)
             return (
               <div key={d.key} className="draft">
                 <input
@@ -616,8 +630,11 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
                           </>
                         ) : null}
                       </>
-                    ) : date ? (
-                      <b>{fmtLong(date)}</b>
+                    ) : shown ? (
+                      <b>
+                        {fmtLong(shown)}
+                        {!date && d.task?.givenDue ? ' (your deadline — no court date)' : ''}
+                      </b>
                     ) : (
                       <span className="muted">No date yet</span>
                     )}
@@ -627,6 +644,20 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
                   {d.task?.rule && <div className="rule-note">{d.task.rule}</div>}
                   {d.task?.notes && <div className="small muted" style={{ marginTop: 4 }}>{d.task.notes}</div>}
                 </div>
+                {d.type === 'task' && d.task!.kind !== 'followup' && d.task!.kind !== 'summary' && (
+                  <div className="col" style={{ gap: 2, flex: 'none' }}>
+                    <span className="tiny muted">Deadline given</span>
+                    <input
+                      className="input"
+                      type="date"
+                      style={{ width: 150 }}
+                      value={d.task!.givenDue || ''}
+                      onChange={(e) => setDrafts(drafts.map((x, j) => (j === i ? { ...x, task: { ...x.task, givenDue: e.target.value || undefined } } : x)))}
+                    />
+                  </div>
+                )}
+                <div className="col" style={{ gap: 2, flex: 'none' }}>
+                <span className="tiny muted">{d.type === 'event' ? 'Date' : d.task!.kind === 'followup' ? 'First nudge' : d.task!.kind === 'summary' ? 'Hard deadline' : 'Court / actual due'}</span>
                 <input
                   className="input"
                   type="date"
@@ -641,6 +672,7 @@ export function WorkflowDialog({ caseId: initialCase, workflowId }: { caseId?: s
                     )
                   }}
                 />
+                </div>
               </div>
             )
           })}
